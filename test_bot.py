@@ -75,3 +75,41 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+import unittest
+from unittest.mock import MagicMock
+from src.dialog.conversation_handler import ConversationHandler
+from src.integrations.elearn.synchronizer import ELearnSynchronizer
+import tempfile
+
+class TestBotIntegration(unittest.TestCase):
+    def test_conversation_flow(self):
+        """Test a conversation flow."""
+        # Initialize components
+        conversation_handler = ConversationHandler()
+
+        # User ID for the test
+        user_id = "test_user"
+
+        # First message: greeting
+        response = conversation_handler.process_message(user_id, "Hello")
+        assert "intent" in response
+
+class TestELearnIntegration(unittest.TestCase):
+    def test_elearn_synchronization(self):
+        """Test E-Learn synchronization."""
+        with tempfile.TemporaryDirectory() as temp_data_dir:
+            # Initialize synchronizer with temporary data directory and dummy mode
+            synchronizer = ELearnSynchronizer(data_dir=temp_data_dir, dummy_mode=True)
+
+            # Perform synchronization
+            result = synchronizer.sync_all()
+
+            # Assert that synchronization was successful
+            assert result["courses_synced"] > 0
+            assert result["materials_synced"] > 0
+            assert result["assignments_synced"] > 0
+            assert result["schedule_synced"] > 0
+
+if __name__ == '__main__':
+    unittest.main()
