@@ -236,6 +236,32 @@ def stats_command(update: Update, context: CallbackContext) -> None:
         
         # Record error
         metrics_collector.record_error('command_error')
+        
+def login_command(update: Update, context: CallbackContext) -> None:
+    """Send authentication link to the user."""
+    try:
+        user = update.effective_user
+        user_id = str(user.id)
+        
+        # Generate authentication link
+        auth_link = f"http://localhost:5050/login/{user_id}"
+        
+        # Send authentication link
+        update.message.reply_text(
+            "Please authenticate using your SMU email address by clicking the link below:\n\n"
+            f"{auth_link}"
+        )
+        
+        # Record user activity
+        metrics_collector.record_user_activity(user_id)
+        
+    except Exception as e:
+        # Handle error
+        error_message = error_handler.handle_error(e, 'default', {'command': 'login'})
+        update.message.reply_text(error_message)
+        
+        # Record error
+        metrics_collector.record_error('command_error')
 
 def progress_command(update: Update, context: CallbackContext) -> None:
     """Show user's learning progress."""
@@ -293,6 +319,7 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("sync", sync_command))
     dispatcher.add_handler(CommandHandler("stats", stats_command))
     dispatcher.add_handler(CommandHandler("progress", progress_command))
+    dispatcher.add_handler(CommandHandler("login", login_command))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
     # Start the Bot

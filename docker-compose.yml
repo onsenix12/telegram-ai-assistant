@@ -56,6 +56,18 @@ services:
     networks:
       - bot-network
 
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "5050:5050"
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - SECRET_KEY=${AUTH_SECRET_KEY}
+    restart: unless-stopped
+    networks:
+      - bot-network
+
 volumes:
   redis-data:
   postgres-data:
