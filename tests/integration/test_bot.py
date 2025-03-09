@@ -7,7 +7,7 @@ from src.dialog.conversation_handler import ConversationHandler
 class TestBotIntegration:
     """Test the bot's components working together."""
    
-   def test_conversation_flow(self):
+    def test_conversation_flow(self):
         """Test a conversation flow."""
         # Initialize components
         conversation_handler = ConversationHandler()
