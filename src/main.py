@@ -243,19 +243,48 @@ def login_command(update: Update, context: CallbackContext) -> None:
         user = update.effective_user
         user_id = str(user.id)
         
-        # Generate authentication link
-        auth_link = f"http://localhost:5050/login/{user_id}"
+        # Record user activity
+        metrics_collector.record_user_activity(user_id)
+        
+        # Check if the user is already authenticated
+        import requests
+        try:
+            # Try with the Docker network name first
+            response = requests.get(f"http://auth-service:5050/verify/{user_id}", timeout=3)
+        except requests.exceptions.RequestException:
+            # Fall back to localhost
+            response = requests.get(f"http://localhost:5050/verify/{user_id}", timeout=3)
+            
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('authenticated', False):
+                # User is already authenticated
+                update.message.reply_text(
+                    "You are already authenticated. You can continue using the bot."
+                )
+                return
+        
+        # Generate authentication link using public-facing domain
+        # First try to get the external auth URL
+        external_domain = os.getenv('EXTERNAL_DOMAIN')
+        if external_domain:
+            auth_link = f"http://{external_domain}/login/{user_id}"
+            logger.info(f"Using external domain for auth link: {auth_link}")
+        else:
+            # Fall back to AUTH_SERVICE_URL
+            auth_base_url = os.getenv('AUTH_SERVICE_URL', 'http://localhost:5050')
+            auth_link = f"{auth_base_url}/login/{user_id}"
+            logger.info(f"Using AUTH_SERVICE_URL for auth link: {auth_link}")
         
         # Send authentication link
         update.message.reply_text(
             "Please authenticate using your SMU email address by clicking the link below:\n\n"
-            f"{auth_link}"
+            f"{auth_link}\n\n"
+            "You need to authenticate to use the full features of this bot."
         )
         
-        # Record user activity
-        metrics_collector.record_user_activity(user_id)
-        
     except Exception as e:
+        logger.error(f"Error in login command: {str(e)}")
         # Handle error
         error_message = error_handler.handle_error(e, 'default', {'command': 'login'})
         update.message.reply_text(error_message)

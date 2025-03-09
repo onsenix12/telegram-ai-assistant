@@ -344,38 +344,51 @@ class MultiPartQuestionHandler:
             logger.info("DEV_MODE is enabled, skipping authentication check")
             return True
         
-        try:
-            # First try with Docker service name
+        # Get auth service URL from environment or use default
+        auth_base_url = os.getenv('AUTH_SERVICE_URL', 'http://auth-service:5050')
+        auth_endpoints = [
+            f"{auth_base_url}/verify/{user_id}",
+            f"http://auth-service:5050/verify/{user_id}",
+            f"http://localhost:5050/verify/{user_id}"
+        ]
+        
+        # Try each endpoint until one works
+        for endpoint in auth_endpoints:
             try:
-                logger.info(f"Checking authentication for user {user_id} via auth-service")
-                response = requests.get(f"http://auth-service:5050/verify/{user_id}", timeout=3)
+                logger.info(f"Checking authentication via {endpoint}")
+                response = requests.get(endpoint, timeout=3)
                 
                 if response.status_code == 200:
-                    data = response.json()
+                    try:
+                        # Try to parse as regular JSON first
+                        data = response.json()
+                    except ValueError:
+                        # If that fails, try to parse as BSON
+                        import json
+                        try:
+                            data = json.loads(response.text)
+                        except:
+                            logger.error(f"Failed to parse auth response: {response.text[:100]}")
+                            continue
+                    
                     is_authenticated = data.get('authenticated', False)
                     logger.info(f"Authentication result for user {user_id}: {is_authenticated}")
-                    return is_authenticated
+                    
+                    if is_authenticated:
+                        # Successfully authenticated
+                        return True
+                else:
+                    logger.warning(f"Auth service at {endpoint} returned status code: {response.status_code}")
             except requests.exceptions.RequestException as e:
-                logger.warning(f"Failed to connect to auth-service via Docker network: {str(e)}")
-                
-            # Fallback to localhost
-            logger.info(f"Trying localhost auth service for user {user_id}")
-            response = requests.get(f"http://localhost:5050/verify/{user_id}", timeout=3)
-            
-            if response.status_code == 200:
-                data = response.json()
-                is_authenticated = data.get('authenticated', False)
-                logger.info(f"Authentication result for user {user_id} via localhost: {is_authenticated}")
-                return is_authenticated
-            else:
-                logger.error(f"Auth service returned status code: {response.status_code}")
-                # For testing, temporarily return True instead of False
-                return True
-                
-        except Exception as e:
-            logger.error(f"Error checking authentication: {str(e)}")
-            # For development, assume authenticated to avoid blocking
+                logger.warning(f"Failed to connect to auth service at {endpoint}: {str(e)}")
+        
+        # If we get here, all auth endpoints failed or user is not authenticated
+        if os.getenv('AUTH_REQUIRED', 'true').lower() == 'false':
+            logger.warning(f"AUTH_REQUIRED is false, allowing unauthenticated user {user_id}")
             return True
+        
+        logger.info(f"User {user_id} is not authenticated")
+        return False
     
     def process_message(self, user_id: str, message: str) -> str:
             """

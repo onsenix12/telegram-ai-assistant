@@ -10,7 +10,14 @@ def test_auth_service():
         response = requests.get("http://localhost:5050/")
         print(f"Root endpoint:")
         print(f"Status code: {response.status_code}")
-        print(f"Response: {response.text}")
+        print(f"Response: {response.text[:100]}...")
+        
+        # Test the status endpoint
+        response = requests.get("http://localhost:5050/status")
+        print(f"\nStatus endpoint:")
+        print(f"Status code: {response.status_code}")
+        status_data = json.loads(response.text)
+        print(json.dumps(status_data, indent=2))
         
         # Test the verify endpoint
         response = requests.get("http://localhost:5050/verify/123456")
