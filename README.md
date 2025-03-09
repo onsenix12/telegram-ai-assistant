@@ -2,7 +2,7 @@
 
 A Telegram bot that assists SMU Master's Program students with course information, learning materials, and answering complex questions about their studies.
 
-![CI/CD Pipeline](https://github.com/yourusername/telegram-ai-assistant/actions/workflows/ci-cd.yml/badge.svg)
+![CI/CD Pipeline](https://github.com/onsenix12/telegram-ai-assistant/actions/workflows/ci-cd.yml/badge.svg)
 
 ## Features
 
