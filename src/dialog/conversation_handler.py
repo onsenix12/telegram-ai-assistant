@@ -11,5 +11,11 @@ class ConversationHandler:
         self.intent_classifier = IntentClassifier()
 
     def process_message(self, user_id, message_text):
-        # Process the message and return a response
-        return "This is a response"
+        # Process the message and return a dictionary
+        intents = self.intent_classifier.classify(message_text)
+        intent = intents[0] if intents else "unknown"
+        
+        return {
+            "intent": intent,
+            "message": "This is a response"
+        }
