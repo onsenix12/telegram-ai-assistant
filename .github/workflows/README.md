@@ -6,7 +6,7 @@ This directory contains GitHub Actions workflow files for Continuous Integration
 
 | Workflow | Status |
 |----------|--------|
-| CI/CD Pipeline | ![CI/CD Pipeline Status](https://github.com/yourusername/telegram-ai-assistant/actions/workflows/ci-cd.yml/badge.svg) |
+| CI/CD Pipeline | ![CI/CD Pipeline Status](https://github.com/onsenix12/telegram-ai-assistant/actions/workflows/ci-cd.yml/badge.svg) |
 
 ## Available Workflows
 
