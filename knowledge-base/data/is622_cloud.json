@@ -1,0 +1,4 @@
+{
+    "title": "IS622: Cloud Computing and Container Architecture",
+    "text": "This course covers cloud computing platforms and container technologies. Topics include: virtualization, cloud service models (IaaS, PaaS, SaaS), container orchestration with Kubernetes, microservices architecture, and cloud security practices. Students learn how to design, deploy, and manage applications in cloud environments using containerization for improved scalability and resource efficiency."
+  }

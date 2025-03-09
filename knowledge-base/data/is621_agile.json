@@ -1,0 +1,4 @@
+{
+    "title": "IS621: Agile and DevSecOps",
+    "text": "This course covers agile methodologies and DevSecOps practices for modern software development. Topics include: Agile process execution, user stories, planning, estimation, sprint tracking, XP practices such as code review, pair programming, refactoring, testing, and CI/CD. Students learn how to integrate security considerations early in development process (shift left). The project requires students to form teams to develop a new software system following agile principles and DevSecOps practices."
+  }

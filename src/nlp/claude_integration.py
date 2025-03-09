@@ -38,13 +38,14 @@ class ClaudeAI:
         - IS625: Software Quality Management
         """
     
-    def send_message(self, user_message: str, conversation_history: Optional[List[Dict[str, Any]]] = None) -> str:
+    def send_message(self, user_message: str, conversation_history: Optional[List[Dict[str, Any]]] = None, custom_system_prompt: Optional[str] = None) -> str:
         """
         Send a message to Claude AI and get a response.
         
         Args:
             user_message: The user's message
             conversation_history: Optional list of previous messages in the conversation
+            custom_system_prompt: Optional system prompt to override the default one
             
         Returns:
             Claude's response text
@@ -72,7 +73,7 @@ class ClaudeAI:
         data = {
             "model": self.model,
             "messages": messages,
-            "system": self.system_prompt,
+            "system": custom_system_prompt or self.system_prompt,
             "max_tokens": self.max_tokens
         }
         
@@ -115,30 +116,83 @@ class ClaudeAI:
     def handle_multi_part_question(self, user_id: str, message: str, context: Dict[str, Any]) -> str:
         """
         Handle a complex multi-part question using Claude AI.
-        
-        Args:
-            user_id: The unique identifier for the user
-            message: The user's message
-            context: The conversation context
-            
-        Returns:
-            The response text
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Query knowledge base first
+        knowledge_context = ""
+        knowledge_found = False
+        highest_score = 0
+        
+        try:
+            import requests
+            logger.info(f"Querying knowledge base with: {message[:50]}..." if len(message) > 50 else f"Querying knowledge base with: {message}")
+            kb_response = requests.post(
+                "http://knowledge-base:5000/search",
+                json={"query": message},
+                timeout=5
+            )
+            
+            logger.info(f"Knowledge base response status: {kb_response.status_code}")
+            
+            if kb_response.status_code == 200:
+                response_data = kb_response.json()
+                logger.info(f"Knowledge base response data: {response_data}")
+                results = response_data.get('results', [])
+                knowledge_found = response_data.get('has_knowledge', False)
+                highest_score = response_data.get('highest_score', 0)
+                
+                if results:
+                    knowledge_context = "Here is some relevant information from SMU courses:\n\n"
+                    for result in results:
+                        # Check for 'content' field, fall back to 'text' field if not present
+                        content = result.get('content', result.get('text', ''))
+                        knowledge_context += f"--- {result['title']} ---\n{content}\n\n"
+                    knowledge_context += "Please use this information to inform your response.\n\n"
+        except Exception as e:
+            # If knowledge base is not available, continue without it
+            logger.error(f"Knowledge base query failed: {str(e)}")
+
+        # If no relevant knowledge found or knowledge score is very low, return standard response
+        if not knowledge_found or highest_score < 65:  # Lowered threshold to 65 to match search results
+            logger.info(f"No relevant knowledge found (score: {highest_score}), checking if technical question")
+            # Quick check if it's a programming or technical question (which Claude might know)
+            programming_keywords = ['code', 'program', 'function', 'algorithm', 'python', 'java', 'javascript']
+            is_technical_question = any(keyword in message.lower() for keyword in programming_keywords)
+            
+            # If it's not a technical question Claude would know, return the "not in knowledge" message
+            if not is_technical_question:
+                # Add this check before returning "not in knowledge" message
+                # Basic conversational questions that shouldn't trigger the "not in knowledge" response
+                basic_questions = [
+                    'hello', 'hi', 'how are you', 'thank', 'goodbye', 'bye', 
+                    'who are you', 'what can you do', 'help'
+                ]
+
+                is_basic_question = any(basic.lower() in message.lower() for basic in basic_questions)
+
+                # If it's a basic question, continue with Claude's normal response
+                if is_basic_question:
+                    logger.info("Basic conversational question detected, processing normally")
+                    # Process normally
+                    pass
+                else:
+                    # Return the "not in knowledge" message for non-technical questions
+                    logger.info("Non-technical question without knowledge base match, returning 'not in knowledge' message")
+                    return "I don't have that in my knowledge."
+        else:
+            logger.info(f"Found relevant knowledge with score: {highest_score}. Knowledge will be used in response.")
+        
         # Get conversation history from context
         conversation_history = context.get('claude_conversation', [])
         
-        # Send message to Claude
-        response = self.send_message(message, conversation_history)
+        # Modify system prompt to include knowledge context
+        enhanced_system_prompt = self.system_prompt
+        if knowledge_context:
+            logger.info("Adding knowledge context to system prompt")
+            enhanced_system_prompt += f"\n\n{knowledge_context}"
         
-        # Update conversation history
-        conversation_history.append({"role": "user", "content": message})
-        conversation_history.append({"role": "assistant", "content": response})
-        
-        # Limit conversation history to last 10 messages to avoid context overflow
-        if len(conversation_history) > 10:
-            conversation_history = conversation_history[-10:]
-        
-        # Update context with new conversation history
-        context['claude_conversation'] = conversation_history
-        
+        # Send message to Claude with enhanced system prompt
+        response = self.send_message(message, conversation_history, enhanced_system_prompt)
         return response
